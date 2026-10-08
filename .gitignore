@@ -1,0 +1,25 @@
+# Private accounting data and generated reports
+**/.local-data/
+**/outputs/
+*.xlsx
+*.xls
+*.csv
+*.tsv
+
+# Local dependencies, credentials and caches
+**/node_modules/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.wrangler/
+*.log
+*.bak
+*_bak
+
+# Local screenshots may contain accounting data
+prototype/*.jpg
+prototype/*.png

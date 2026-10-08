@@ -1,0 +1,43 @@
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
+const {execFileSync}=require('node:child_process');
+process.env.TAISIAM_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'taisiam-excel-test-'));
+const bridge=require('./bridge.cjs'),dir=process.env.TAISIAM_DATA_DIR;
+const source=process.argv[2];
+(async()=>{
+ const batch=await bridge.importBytes(fs.readFileSync(source),'excel-report.xlsx');
+ assert.equal(batch.groups.length,14);assert.equal(batch.emptyPumpRows,72);
+ assert.equal(batch.groups.reduce((s,g)=>s+g.lines.length,0),58);
+ assert.equal(batch.groups.reduce((s,g)=>s+g.sales,0),batch.sourceSummary.Q138);
+ const group=batch.groups[0],entry={sourceRow:group.sourceRow,date:group.date,note:'isolated integration test',confirmed:true};
+ assert.throws(()=>bridge.commitData({revision:0,batchId:batch.id,branch:'ในเมือง',entries:[{...entry,date:'20105-09-10'}]}));
+ bridge.commitData({revision:0,batchId:batch.id,branch:'ในเมือง',entries:[entry]});
+ assert.throws(()=>bridge.commitData({revision:0,batchId:batch.id,branch:'ในเมือง',entries:[entry]}),/ข้อมูลเปลี่ยน/);
+ assert.throws(()=>bridge.commitData({revision:1,batchId:batch.id,branch:'ในเมือง',entries:[entry]}),/รายการเดิม/);
+ let db=bridge.load(),original=db.records[0],edited=structuredClone(original);
+ edited.lines[0].price+=1;
+ const input=path.join(dir,'edit.json'),xlsx=path.join(dir,'edit.xlsx');
+ fs.writeFileSync(input,JSON.stringify({records:[edited]}));
+ execFileSync(process.execPath,[path.join(__dirname,'export_workbook.mjs'),input,xlsx],{stdio:'pipe'});
+ const back=await bridge.importBytes(fs.readFileSync(xlsx),'edited.xlsx');
+ assert.equal(back.groups.length,1);assert.equal(back.groups[0].recordId,original.id);
+ assert.equal(back.groups[0].sales,original.sales+original.lines[0].liters);
+ assert.deepEqual(back.groups[0].lines.map(l=>l.legacyR),original.lines.map(l=>l.legacyR));
+ const update={sourceRow:back.groups[0].sourceRow,date:original.date,note:'reviewed changed price',confirmed:true,action:'update',existingId:original.id};
+ bridge.commitData({revision:1,batchId:back.id,entries:[update]});
+ db=bridge.load();assert.equal(db.records.length,1);assert.equal(db.records[0].versions.length,1);assert.equal(db.records[0].versions[0].sales,original.sales);assert.equal(db.records[0].sales,original.sales+original.lines[0].liters);
+ assert.throws(()=>bridge.validRecord({...original,lines:[{...original.lines[0],legacyV:-1}]}));
+ assert.equal(fs.readFileSync(path.join(dir,batch.id+'.xlsx')).equals(fs.readFileSync(source)),true);
+ const server=require('node:http').createServer((req,res)=>bridge.handle(req,res,new URL(req.url,'http://localhost')));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const base='http://127.0.0.1:'+server.address().port+'/api/excel';
+  const manual=await fetch(base+'/manual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:2,branch:'ทดสอบ',date:'2026-10-01',lines:[{pump:'A',fuel:'ดีเซล',opening:100,closing:150,liters:50,price:30}]})});
+  assert.equal(manual.status,200);assert.equal((await manual.json()).sales,1500);
+  const report=await fetch(base+'/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({branch:'ทดสอบ'})});
+  assert.equal(report.status,200);const bytes=Buffer.from(await report.arrayBuffer());assert.equal(bytes.slice(0,2).toString(),'PK');
+  const round=await bridge.importBytes(bytes,'manual-roundtrip.xlsx');assert.equal(round.groups[0].sales,1500);assert.equal(round.groups[0].lines[0].lineId,'1');
+  const blocked=await fetch(base+'/manual',{method:'POST',headers:{Origin:'https://example.com'},body:'{}'});assert.equal(blocked.status,403);
+  assert.equal((await (await fetch(base+'/backup')).json()).records.length,2);
+ }finally{server.close()}
+ console.log('PASS: source totals and rows, invalid dates, duplicates, revision conflict, XLSX export/reimport, reviewed update and version, liter units, unchanged original, HTTP manual save/export/backup, origin protection. Test data: '+dir);
+})().catch(e=>{console.error(e);process.exitCode=1});
