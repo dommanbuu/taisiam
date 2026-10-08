@@ -1,0 +1,13 @@
+{
+  "name": "taisiam",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node prototype/server.cjs --port 4174",
+    "deploy": "wrangler deploy",
+    "deploy:check": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "wrangler": "4.148.0"
+  }
+}

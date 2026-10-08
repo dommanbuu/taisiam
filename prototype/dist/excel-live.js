@@ -1,6 +1,6 @@
 let xlState=null,xlBatch=null,xlError='',xlBusy=false,xlLoaded=false,xlBranch='TAI SIAM Tachileik',xlFrom='',xlTo='',xlChoices={},xlView='ledger';
 const xlOldReports=reportsPage,xlOldImport=importPage;
-async function xlApi(path,body){let r=await fetch('/api/excel'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});if(!r.ok){let e=await r.json().catch(()=>({error:'เชื่อมต่อระบบบันทึกในเครื่องไม่ได้'}));throw new Error(e.error)}return r.json()}
+async function xlApi(path,body){let r=await fetch('/api/excel'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});if(!r.ok){let e=await r.json().catch(()=>({error:'ยังเชื่อมต่อระบบบัญชีไม่ได้ หากเปิดเว็บบน Cloudflare ต้องติดตั้ง backend บัญชีก่อน'}));throw new Error(e.error)}return r.json()}
 async function xlLoad(){try{xlState=await xlApi('/state');xlError='';xlLoaded=true}catch(e){xlError=e.message;xlLoaded=true}if(['reports','import'].includes(route))render()}
 function xlChoice(g){return xlChoices[g.sourceRow]??=( {date:g.date||'',note:'',selected:false,action:'create',existingId:null})}
 function xlOld(g){let c=xlChoice(g),b=g.branch||xlBranch;return xlState?.records.find(r=>g.recordId?r.id===g.recordId:r.source.batchId===xlBatch.id&&r.source.row===g.sourceRow)||xlState?.records.find(r=>r.branch===b&&r.date===c.date)}

@@ -6,7 +6,9 @@ function bookGo(section){bookSection=section;xlView='ledger';go('reports')}
 const bookLayout=xlLayout;xlLayout=function(title,sub,body){return bookLayout(title,sub,`<div class="book-toolbar"><button onclick="bookGo('home')">← งานบัญชี 5 หมวด</button>${bookSelect()}</div>`+body)};
 const bookSalesPage=reportsPage;
 reportsPage=function(){
- if(!canAccount()||!xlLoaded||xlView==='files')return bookSalesPage();
+ if(!canAccount()||!xlLoaded)return bookSalesPage();
+ if(!xlState)return head('งานบัญชียังไม่พร้อมใช้งาน','หน้านี้ต้องเชื่อมต่อระบบบันทึกบัญชี')+`<div class="note error">${esc(xlError||'ไม่พบระบบบัญชี')}</div><section class="panel"><p>เวอร์ชัน Cloudflare นี้เปิดดูหน้าต้นแบบได้ แต่ยังไม่ได้ย้ายฐานข้อมูลและระบบ Excel ขึ้น Cloudflare</p><button onclick="xlLoad()">ลองเชื่อมต่อใหม่</button><button onclick="go('tasks')">กลับหน้าต้นแบบ</button></section>`;
+ if(xlView==='files')return bookSalesPage();
  if(bookSection==='sales')return bookSalesPage();
  if(bookSection==='home')return xlLayout('งานบัญชีสาขา','เลือกสาขา แล้วเลือกหมวดที่ต้องการทำงาน',`<div class="book-grid">${bookCategories.map(([id,title,sub],i)=>`<button class="panel book-card" onclick="bookGo('${id}')"><span class="eyebrow">0${i+1}</span><h2>${title}</h2><p>${sub}</p><span>เปิดหมวด →</span></button>`).join('')}</div><section class="panel"><h2>Excel รวมเล่ม</h2><p>รวม 5 หมวด พร้อมภาพรวมและข้อมูลต้นทางในไฟล์เดียว หมวดค่าใช้จ่าย/ซื้อ/เงินสดเป็นโครงร่างรอเทียบแบบฟอร์มจริง</p><button class="primary" onclick="xlFrom='';xlTo='';xlExport()">ส่งออกทุกหมวดของสาขานี้</button><p class="muted">นำกลับเข้าเว็บได้เฉพาะชีต “รายการเว็บ” (ยอดขายรายวัน) ค่าใช้จ่าย/ซื้อบันทึกผ่านเว็บได้ ส่วนหมวดอื่นใช้เป็นแบบร่างใน Excel ก่อน</p></section>`);
  if(['expenses','purchases'].includes(bookSection))return bookEntriesPage(bookSection);
