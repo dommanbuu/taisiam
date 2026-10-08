@@ -1,8 +1,28 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "taisiam",
+  "main": "cloudflare/worker.mjs",
   "compatibility_date": "2026-10-08",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "assets": {
-    "directory": "./prototype/dist"
+    "directory": "./prototype/dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "taisiam-accounting",
+      "migrations_dir": "migrations",
+      "database_id": "7a380415-fa02-4e35-a8ef-f74b114810ad"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "alias": {
+    "util": "./cloudflare/node-util.cjs"
   }
 }
